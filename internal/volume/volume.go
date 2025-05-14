@@ -1,8 +1,7 @@
+// Package volume provides functionality to listen for and retrieve system volume changes.
 package volume
 
 import (
-	"fmt"
-	"os/exec"
 	"sync"
 	"time"
 )
@@ -24,16 +23,6 @@ func NewListener() *Listener {
 // GetCurrentVolume returns the current system output volume as a percentage (0-100).
 func (l *Listener) GetCurrentVolume() (int, error) {
 	return getSystemVolume()
-}
-
-func getSystemVolume() (int, error) {
-	out, err := exec.Command("osascript", "-e", "output volume of (get volume settings)").Output()
-	if err != nil {
-		return 0, err
-	}
-	var vol int
-	_, err = fmt.Sscanf(string(out), "%d", &vol)
-	return vol, err
 }
 
 // Listen returns a channel that emits the system volume percentage whenever it changes.
