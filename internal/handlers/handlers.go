@@ -1,0 +1,104 @@
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi"
+	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi/types"
+	"github.com/vmorsell/global-volume/internal/connstorage"
+	"go.uber.org/zap"
+)
+
+type Handler struct {
+	Logger      *zap.Logger
+	AWSConfig   aws.Config
+	ConnStorage *connstorage.ConnectionStorage
+}
+
+func (h *Handler) ConnectHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	id := req.RequestContext.ConnectionID
+	if err := h.ConnStorage.SaveConnection(ctx, id); err != nil {
+		h.Logger.Error("save connection", zap.Error(err), zap.String("id", id))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+	}, nil
+}
+
+func (h *Handler) DisconnectHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	id := req.RequestContext.ConnectionID
+	if err := h.ConnStorage.DeleteConnection(ctx, id); err != nil {
+		h.Logger.Error("delete connection", zap.Error(err), zap.String("id", id))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+	}, nil
+}
+
+type VolumeMessage struct {
+	Volume float64 `json:"volume"`
+}
+
+func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var msg VolumeMessage
+	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: 400,
+			Body:       "invalid payload",
+		}, nil
+	}
+
+	if msg.Volume < 0 || msg.Volume > 1 {
+		return events.APIGatewayProxyResponse{
+			StatusCode: 400,
+			Body:       "volume must be between 0 and 1",
+		}, nil
+	}
+
+	endpoint := fmt.Sprintf("https://%s/%s", req.RequestContext.DomainName, req.RequestContext.Stage)
+	apiClient := apigatewaymanagementapi.NewFromConfig(h.AWSConfig, func(o *apigatewaymanagementapi.Options) {
+		o.EndpointResolver = apigatewaymanagementapi.EndpointResolverFromURL(endpoint)
+	})
+
+	conns, err := h.ConnStorage.ListConnections(ctx)
+	if err != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+
+	payload, _ := json.Marshal(map[string]float64{
+		"volume": msg.Volume,
+	})
+	for _, id := range conns {
+		_, err := apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
+			ConnectionId: &id,
+			Data:         payload,
+		})
+		if err != nil {
+			var gone *types.GoneException
+			if errors.As(err, &gone) {
+				if delErr := h.ConnStorage.DeleteConnection(ctx, id); delErr != nil {
+					h.Logger.Warn("cleanup stale connection", zap.Error(delErr), zap.String("id", id))
+				}
+				continue
+			}
+			h.Logger.Error("post to connection failed", zap.Error(err), zap.String("id", id))
+		}
+	}
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+	}, nil
+}
