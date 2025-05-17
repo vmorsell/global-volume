@@ -12,7 +12,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.43.1
 	github.com/aws/constructs-go/constructs/v10 v10.4.2
 	github.com/aws/jsii-runtime-go v1.112.0
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	go.uber.org/zap v1.27.0
 )
