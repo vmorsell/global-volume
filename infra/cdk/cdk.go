@@ -28,7 +28,7 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 		Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
 		Architecture: awslambda.Architecture_ARM_64(),
 		Handler:      jsii.String("bootstrap"),
-		Code:         awslambda.Code_FromAsset(jsii.String("../../dist"), nil),
+		Code:         awslambda.Code_FromAsset(jsii.String("../../build"), nil),
 		Environment: &map[string]*string{
 			"CONNECTIONS_TABLE": table.TableName(),
 		},
