@@ -63,9 +63,13 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 	}
 
 	endpoint := fmt.Sprintf("https://%s/%s", req.RequestContext.DomainName, req.RequestContext.Stage)
-	apiClient := apigatewaymanagementapi.NewFromConfig(h.AWSConfig, func(o *apigatewaymanagementapi.Options) {
-		o.EndpointResolver = apigatewaymanagementapi.EndpointResolverFromURL(endpoint)
-	})
+	apiClient := apigatewaymanagementapi.NewFromConfig(
+		h.AWSConfig, func(o *apigatewaymanagementapi.Options) {
+			o.EndpointResolver = apigatewaymanagementapi.EndpointResolverFromURL(endpoint)
+		},
+		apigatewaymanagementapi.WithSigV4SigningName("execute-api"),
+		apigatewaymanagementapi.WithSigV4SigningRegion(h.AWSConfig.Region),
+	)
 
 	conns, err := h.ConnStorage.ListConnections(ctx)
 	if err != nil {

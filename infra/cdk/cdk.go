@@ -68,13 +68,13 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 		AutoDeploy:   jsii.Bool(true),
 	})
 
+	postArn := fmt.Sprintf(
+		"arn:aws:execute-api:%s:%s:%s/%s/POST/@connections/*",
+		*stack.Region(), *stack.Account(), *api.ApiId(), *stage.StageName(),
+	)
 	fn.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Actions: &[]*string{
-			jsii.String("execute-api:ManageConnections"),
-		},
-		Resources: &[]*string{
-			jsii.String(fmt.Sprintf("arn:aws:execute-api:%s:%s:%s/%s/@connections/*", *stack.Region(), *stack.Account(), *api.ApiId(), *stage.StageName())),
-		},
+		Actions:   &[]*string{jsii.String("execute-api:ManageConnections")},
+		Resources: &[]*string{jsii.String(postArn)},
 	}))
 
 	return stack
