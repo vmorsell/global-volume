@@ -46,23 +46,19 @@ func (h *Handler) DisconnectHandler(ctx context.Context, req events.APIGatewayWe
 	}, nil
 }
 
-type VolumeMessage struct {
-	Volume float64 `json:"volume"`
-}
-
 func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var msg VolumeMessage
-	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
+	var volume int
+	if err := json.Unmarshal([]byte(req.Body), &volume); err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 400,
-			Body:       "invalid payload",
+			Body:       "invalid payload, expected int",
 		}, nil
 	}
 
-	if msg.Volume < 0 || msg.Volume > 1 {
+	if volume < 0 || volume > 100 {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 400,
-			Body:       "volume must be between 0 and 1",
+			Body:       "volume must be between 0 and 100",
 		}, nil
 	}
 
@@ -78,9 +74,7 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 		}, err
 	}
 
-	payload, _ := json.Marshal(map[string]float64{
-		"volume": msg.Volume,
-	})
+	payload, _ := json.Marshal(volume)
 	for _, id := range conns {
 		_, err := apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
 			ConnectionId: &id,
