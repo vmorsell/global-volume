@@ -49,7 +49,7 @@ func main() {
 			return h.ConnectHandler(ctx, req)
 		case "$disconnect":
 			return h.DisconnectHandler(ctx, req)
-		case "broadcast":
+		case "$default":
 			return h.BroadcastHandler(ctx, req)
 		default:
 			return events.APIGatewayProxyResponse{
