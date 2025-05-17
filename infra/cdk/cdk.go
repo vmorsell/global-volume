@@ -9,6 +9,8 @@ import (
 	awsdynamodb "github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	awsiam "github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	awslambda "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	awss3 "github.com/aws/aws-cdk-go/awscdk/v2/awss3"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3deployment"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -76,6 +78,22 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 		Actions:   &[]*string{jsii.String("execute-api:ManageConnections")},
 		Resources: &[]*string{jsii.String(postArn)},
 	}))
+
+	bucket := awss3.NewBucket(stack, jsii.String("WebappBucket"), &awss3.BucketProps{
+		WebsiteIndexDocument: jsii.String("index.html"),
+		PublicReadAccess:     jsii.Bool(true),
+		BlockPublicAccess:    awss3.BlockPublicAccess_BLOCK_ACLS(),
+		RemovalPolicy:        awscdk.RemovalPolicy_DESTROY,
+	})
+	awss3deployment.NewBucketDeployment(stack, jsii.String("WebappDeploy"), &awss3deployment.BucketDeploymentProps{
+		Sources:           &[]awss3deployment.ISource{awss3deployment.Source_Asset(jsii.String("../../web/dist"), nil)},
+		DestinationBucket: bucket,
+	})
+
+	awscdk.NewCfnOutput(stack, jsii.String("WebappURL"), &awscdk.CfnOutputProps{
+		Value:       bucket.BucketWebsiteUrl(),
+		Description: jsii.String("Webapp URL"),
+	})
 
 	return stack
 }
