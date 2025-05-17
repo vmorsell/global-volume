@@ -95,6 +95,11 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 		Description: jsii.String("Webapp URL"),
 	})
 
+	awscdk.NewCfnOutput(stack, jsii.String("WSApiURL"), &awscdk.CfnOutputProps{
+		Value:       api.ApiEndpoint(),
+		Description: jsii.String("WebSocket API URL"),
+	})
+
 	return stack
 }
 
