@@ -37,8 +37,12 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
   try {
     const data = JSON.parse(event.data);
-    setVolume(data);
-    setStatus("Connected");
+    if (data.volume !== undefined) {
+      setVolume(data.volume);
+    }
+    if (data.users !== undefined) {
+      setStatus(`${data.users} users connected`);
+    }
   } catch (e) {
     setStatus("Received invalid message");
   }
