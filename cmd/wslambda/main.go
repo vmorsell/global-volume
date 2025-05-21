@@ -49,8 +49,10 @@ func main() {
 			return h.ConnectHandler(ctx, req)
 		case "$disconnect":
 			return h.DisconnectHandler(ctx, req)
-		case "$default":
-			return h.BroadcastHandler(ctx, req)
+		case "getState":
+			return h.GetStateHandler(ctx, req)
+		case "reqVolumeChange":
+			return h.ReqVolumeChangeHandler(ctx, req)
 		default:
 			return events.APIGatewayProxyResponse{
 				StatusCode: 400,

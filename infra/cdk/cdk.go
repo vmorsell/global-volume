@@ -53,13 +53,20 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 				&apigwint.WebSocketLambdaIntegrationProps{},
 			),
 		},
-		DefaultRouteOptions: &awsapigatewayv2.WebSocketRouteOptions{
-			Integration: apigwint.NewWebSocketLambdaIntegration(
-				jsii.String("BroadcastIntegration"),
-				fn,
-				&apigwint.WebSocketLambdaIntegrationProps{},
-			),
-		},
+	})
+	api.AddRoute(jsii.String("getState"), &awsapigatewayv2.WebSocketRouteOptions{
+		Integration: apigwint.NewWebSocketLambdaIntegration(
+			jsii.String("GetStateIntegration"),
+			fn,
+			&apigwint.WebSocketLambdaIntegrationProps{},
+		),
+	})
+	api.AddRoute(jsii.String("reqVolumeChange"), &awsapigatewayv2.WebSocketRouteOptions{
+		Integration: apigwint.NewWebSocketLambdaIntegration(
+			jsii.String("ReqVolumeChangeIntegration"),
+			fn,
+			&apigwint.WebSocketLambdaIntegrationProps{},
+		),
 	})
 
 	stage := awsapigatewayv2.NewWebSocketStage(stack, jsii.String("DevStage"), &awsapigatewayv2.WebSocketStageProps{

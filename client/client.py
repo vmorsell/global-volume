@@ -60,6 +60,8 @@ async def main():
     async with websockets.connect(SERVER_URL) as ws:
         print(f"[INFO] Connected to sync server at {SERVER_URL}")
 
+        await ws.send(json.dumps({"action": "getState"}))
+
         send_queue = asyncio.Queue()
         asyncio.create_task(volume_watcher(send_queue))
 
@@ -70,7 +72,7 @@ async def main():
             while True:
                 v = await send_queue.get()
                 print(f"[INFO] Local volume: {v}%")
-                await ws.send(json.dumps(v))
+                await ws.send(json.dumps({"action": "reqVolumeChange", "volume": v}))
 
         async def receiver():
             nonlocal user_count

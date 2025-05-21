@@ -35,6 +35,8 @@ const ws = new WebSocket(WS_URL);
 
 ws.onopen = () => {
   setStatus("Connected");
+
+  ws.send(JSON.stringify({ action: "getState" }));
 };
 
 ws.onmessage = (event) => {

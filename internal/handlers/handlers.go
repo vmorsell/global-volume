@@ -47,16 +47,51 @@ func (h *Handler) DisconnectHandler(ctx context.Context, req events.APIGatewayWe
 	}, nil
 }
 
-func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var volume int
-	if err := json.Unmarshal([]byte(req.Body), &volume); err != nil {
+func (h *Handler) GetStateHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	conns, err := h.ConnStorage.ListConnections(ctx)
+	if err != nil {
+		h.Logger.Error("list connections", zap.Error(err))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+
+	payload, _ := json.Marshal(model.State{
+		Users: len(conns),
+	})
+
+	apiClient := newApiClient(h.AWSConfig, req.RequestContext.DomainName, req.RequestContext.Stage)
+	_, err = apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
+		ConnectionId: &req.RequestContext.ConnectionID,
+		Data:         payload,
+	})
+	if err != nil {
+		h.Logger.Error("post to connection", zap.Error(err), zap.String("id", req.RequestContext.ConnectionID))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: 200,
+	}, nil
+}
+
+type ReqVolumeChangeBody struct {
+	Volume int `json:"volume"`
+}
+
+func (h *Handler) ReqVolumeChangeHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var body ReqVolumeChangeBody
+	if err := json.Unmarshal([]byte(req.Body), &body); err != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 400,
-			Body:       "invalid payload, expected int",
+			Body:       "invalid payload, expected {\"volume\": int}",
 		}, nil
 	}
 
-	if volume < 0 || volume > 100 {
+	vol := body.Volume
+	if vol < 0 || vol > 100 {
 		return events.APIGatewayProxyResponse{
 			StatusCode: 400,
 			Body:       "volume must be between 0 and 100",
@@ -71,8 +106,8 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 		}, err
 	}
 
-	payload, _ := json.Marshal(model.BroadcastMessage{
-		Volume: volume,
+	payload, _ := json.Marshal(model.State{
+		Volume: vol,
 		Users:  len(conns),
 	})
 

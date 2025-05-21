@@ -1,6 +1,6 @@
 package model
 
-type BroadcastMessage struct {
+type State struct {
 	Users  int `json:"users,omitempty"`
 	Volume int `json:"volume,omitempty"`
 }
