@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi/types"
 	"github.com/vmorsell/global-volume/internal/connstorage"
+	"github.com/vmorsell/global-volume/pkg/model"
 	"go.uber.org/zap"
 )
 
@@ -62,15 +63,6 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 		}, nil
 	}
 
-	endpoint := fmt.Sprintf("https://%s/%s", req.RequestContext.DomainName, req.RequestContext.Stage)
-	apiClient := apigatewaymanagementapi.NewFromConfig(
-		h.AWSConfig, func(o *apigatewaymanagementapi.Options) {
-			o.EndpointResolver = apigatewaymanagementapi.EndpointResolverFromURL(endpoint)
-		},
-		apigatewaymanagementapi.WithSigV4SigningName("execute-api"),
-		apigatewaymanagementapi.WithSigV4SigningRegion(h.AWSConfig.Region),
-	)
-
 	conns, err := h.ConnStorage.ListConnections(ctx)
 	if err != nil {
 		return events.APIGatewayProxyResponse{
@@ -78,7 +70,12 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 		}, err
 	}
 
-	payload, _ := json.Marshal(volume)
+	payload, _ := json.Marshal(model.BroadcastMessage{
+		Volume: volume,
+		Users:  len(conns),
+	})
+
+	apiClient := newApiClient(h.AWSConfig, req.RequestContext.DomainName, req.RequestContext.Stage)
 	for _, id := range conns {
 		_, err := apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
 			ConnectionId: &id,
@@ -92,11 +89,24 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 				}
 				continue
 			}
-			h.Logger.Error("post to connection failed", zap.Error(err), zap.String("id", id))
+			h.Logger.Error("post to connection", zap.Error(err), zap.String("id", id))
 		}
 	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 	}, nil
+}
+
+func newApiClient(config aws.Config, domainName, stage string) *apigatewaymanagementapi.Client {
+	endpoint := fmt.Sprintf("https://%s/%s", domainName, stage)
+	client := apigatewaymanagementapi.NewFromConfig(
+		config, func(o *apigatewaymanagementapi.Options) {
+			o.EndpointResolver = apigatewaymanagementapi.EndpointResolverFromURL(endpoint)
+		},
+		apigatewaymanagementapi.WithSigV4SigningName("execute-api"),
+		apigatewaymanagementapi.WithSigV4SigningRegion(config.Region),
+	)
+
+	return client
 }

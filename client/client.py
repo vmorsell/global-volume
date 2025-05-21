@@ -77,14 +77,14 @@ async def main():
             async for msg in ws:
                 try:
                     data = json.loads(msg)
-                    if isinstance(data, dict) and data.get("type") == "users":
-                        user_count = data.get("count", 0)
-                        print(f"[INFO] Syncing volume with {user_count} connected users...")
-                    else:
-                        v = data if isinstance(data, int) else None
-                        if v is not None:
-                            print(f"[SYNC] Volume updated to {v}% (peer)")
-                            await set_volume(v)
+                    if isinstance(data, dict):
+                        if "users" in data:
+                            user_count = data["users"]
+                            print(f"[INFO] {user_count} users connected.")
+                        if "volume" in data:
+                            volume = data["volume"]
+                            print(f"[INFO] Volume set to {volume}%.")
+                            await set_volume(volume)
                 except Exception:
                     pass
         await asyncio.gather(sender(), receiver())
