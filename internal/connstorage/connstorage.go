@@ -11,11 +11,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const pk = "connectionId"
+const (
+	pk = "pk"
 
-type Connection struct {
-	ConnectionID string `json:"connectionId" dynamodbav:"connectionId"`
-}
+	connsDocPK = "connections"
+)
 
 type ConnectionStorage struct {
 	Logger    *zap.Logger
@@ -24,60 +24,56 @@ type ConnectionStorage struct {
 }
 
 func (s *ConnectionStorage) SaveConnection(ctx context.Context, id string) error {
-	item, err := attributevalue.MarshalMap(Connection{
-		ConnectionID: id,
-	})
-	if err != nil {
-		return fmt.Errorf("marshal map: %w", err)
-	}
-
-	_, err = s.Client.PutItem(ctx, &dynamodb.PutItemInput{
+	_, err := s.Client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: &s.TableName,
-		Item:      item,
+		Key: map[string]types.AttributeValue{
+			pk: &types.AttributeValueMemberS{Value: connsDocPK},
+		},
+		UpdateExpression: aws.String("ADD connectionIds :id"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":id": &types.AttributeValueMemberSS{Value: []string{id}},
+		},
 	})
 	if err != nil {
-		return fmt.Errorf("put item: %w", err)
+		return fmt.Errorf("update item: %w", err)
 	}
-
 	return nil
 }
 
 func (s *ConnectionStorage) DeleteConnection(ctx context.Context, id string) error {
-	_, err := s.Client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+	_, err := s.Client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: &s.TableName,
 		Key: map[string]types.AttributeValue{
-			pk: &types.AttributeValueMemberS{Value: id},
+			pk: &types.AttributeValueMemberS{Value: connsDocPK},
+		},
+		UpdateExpression: aws.String("DELETE connectionIds :id"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":id": &types.AttributeValueMemberSS{Value: []string{id}},
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("delete item: %w", err)
+		return fmt.Errorf("update item: %w", err)
 	}
-
 	return nil
 }
 
 func (s *ConnectionStorage) ListConnections(ctx context.Context) ([]string, error) {
-	paginator := dynamodb.NewScanPaginator(s.Client, &dynamodb.ScanInput{
-		TableName:            aws.String(s.TableName),
-		ProjectionExpression: aws.String(pk),
+	result, err := s.Client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: &s.TableName,
+		Key: map[string]types.AttributeValue{
+			pk: &types.AttributeValueMemberS{Value: connsDocPK},
+		},
 	})
-
-	var ids []string
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("next page: %w", err)
-		}
-
-		for _, item := range page.Items {
-			var c Connection
-			if err := attributevalue.UnmarshalMap(item, &c); err != nil {
-				s.Logger.Warn("unmarshal map", zap.Error(err))
-				continue
-			}
-			ids = append(ids, c.ConnectionID)
-		}
+	if err != nil {
+		return nil, fmt.Errorf("get item: %w", err)
 	}
 
-	return ids, nil
+	var connections struct {
+		ConnectionIds []string `dynamodbav:"connectionIds"`
+	}
+	if err := attributevalue.UnmarshalMap(result.Item, &connections); err != nil {
+		return nil, fmt.Errorf("unmarshal map: %w", err)
+	}
+
+	return connections.ConnectionIds, nil
 }

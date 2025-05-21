@@ -65,6 +65,7 @@ func (h *Handler) BroadcastHandler(ctx context.Context, req events.APIGatewayWeb
 
 	conns, err := h.ConnStorage.ListConnections(ctx)
 	if err != nil {
+		h.Logger.Error("list connections", zap.Error(err))
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 		}, err

@@ -18,7 +18,7 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 
 	table := awsdynamodb.NewTable(stack, jsii.String("ConnectionsTable"), &awsdynamodb.TableProps{
 		PartitionKey: &awsdynamodb.Attribute{
-			Name: jsii.String("connectionId"),
+			Name: jsii.String("pk"),
 			Type: awsdynamodb.AttributeType_STRING,
 		},
 		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
