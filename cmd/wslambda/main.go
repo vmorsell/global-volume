@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/vmorsell/global-volume/internal/connstorage"
 	"github.com/vmorsell/global-volume/internal/handlers"
+	"github.com/vmorsell/global-volume/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -31,16 +31,16 @@ func main() {
 	}
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
-	connStorage := &connstorage.ConnectionStorage{
+	store := &storage.Storage{
 		Logger:    logger,
 		Client:    dynamoClient,
 		TableName: tableName,
 	}
 
 	h := &handlers.Handler{
-		Logger:      logger,
-		AWSConfig:   cfg,
-		ConnStorage: connStorage,
+		Logger:    logger,
+		AWSConfig: cfg,
+		Storage:   store,
 	}
 
 	router := func(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (interface{}, error) {

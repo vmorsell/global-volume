@@ -10,25 +10,37 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi/types"
-	"github.com/vmorsell/global-volume/internal/connstorage"
+	"github.com/vmorsell/global-volume/internal/storage"
 	"github.com/vmorsell/global-volume/pkg/model"
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	Logger      *zap.Logger
-	AWSConfig   aws.Config
-	ConnStorage *connstorage.ConnectionStorage
+	Logger    *zap.Logger
+	AWSConfig aws.Config
+	Storage   *storage.Storage
 }
 
 func (h *Handler) ConnectHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	id := req.RequestContext.ConnectionID
-	if err := h.ConnStorage.SaveConnection(ctx, id); err != nil {
-		h.Logger.Error("save connection", zap.Error(err), zap.String("id", id))
+
+	state, err := h.Storage.GetState(ctx)
+	if err != nil {
+		h.Logger.Error("get state", zap.Error(err))
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 		}, err
 	}
+
+	state.ConnectionIDs = append(state.ConnectionIDs, id)
+
+	if err := h.Storage.SaveState(ctx, state); err != nil {
+		h.Logger.Error("save state", zap.Error(err))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 	}, nil
@@ -36,31 +48,34 @@ func (h *Handler) ConnectHandler(ctx context.Context, req events.APIGatewayWebso
 
 func (h *Handler) DisconnectHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	id := req.RequestContext.ConnectionID
-	if err := h.ConnStorage.DeleteConnection(ctx, id); err != nil {
-		h.Logger.Error("delete connection", zap.Error(err), zap.String("id", id))
+
+	if err := h.Storage.DeleteConnection(ctx, id); err != nil {
+		h.Logger.Error("delete connection", zap.Error(err))
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 		}, err
 	}
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 	}, nil
 }
 
 func (h *Handler) GetStateHandler(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
-	conns, err := h.ConnStorage.ListConnections(ctx)
+	state, err := h.Storage.GetState(ctx)
 	if err != nil {
-		h.Logger.Error("list connections", zap.Error(err))
+		h.Logger.Error("get state", zap.Error(err))
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 		}, err
 	}
 
-	payload, _ := json.Marshal(model.State{
-		Users: len(conns),
+	payload, _ := json.Marshal(model.StateMessage{
+		Users:  len(state.ConnectionIDs),
+		Volume: state.Volume,
 	})
 
-	apiClient := newApiClient(h.AWSConfig, req.RequestContext.DomainName, req.RequestContext.Stage)
+	apiClient := newApiClient(h.AWSConfig, req.RequestContext.APIID, req.RequestContext.Stage)
 	_, err = apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
 		ConnectionId: &req.RequestContext.ConnectionID,
 		Data:         payload,
@@ -98,21 +113,30 @@ func (h *Handler) ReqVolumeChangeHandler(ctx context.Context, req events.APIGate
 		}, nil
 	}
 
-	conns, err := h.ConnStorage.ListConnections(ctx)
+	state, err := h.Storage.GetState(ctx)
 	if err != nil {
-		h.Logger.Error("list connections", zap.Error(err))
+		h.Logger.Error("get state", zap.Error(err))
 		return events.APIGatewayProxyResponse{
 			StatusCode: 500,
 		}, err
 	}
 
-	payload, _ := json.Marshal(model.State{
-		Volume: vol,
-		Users:  len(conns),
+	state.Volume = vol
+	if err := h.Storage.SaveState(ctx, state); err != nil {
+		h.Logger.Error("save state", zap.Error(err))
+		return events.APIGatewayProxyResponse{
+			StatusCode: 500,
+		}, err
+	}
+
+	payload, _ := json.Marshal(model.StateMessage{
+		Users:  len(state.ConnectionIDs),
+		Volume: state.Volume,
 	})
 
-	apiClient := newApiClient(h.AWSConfig, req.RequestContext.DomainName, req.RequestContext.Stage)
-	for _, id := range conns {
+	apiClient := newApiClient(h.AWSConfig, req.RequestContext.APIID, req.RequestContext.Stage)
+
+	for _, id := range state.ConnectionIDs {
 		_, err := apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
 			ConnectionId: &id,
 			Data:         payload,
@@ -120,7 +144,7 @@ func (h *Handler) ReqVolumeChangeHandler(ctx context.Context, req events.APIGate
 		if err != nil {
 			var gone *types.GoneException
 			if errors.As(err, &gone) {
-				if delErr := h.ConnStorage.DeleteConnection(ctx, id); delErr != nil {
+				if delErr := h.Storage.DeleteConnection(ctx, id); delErr != nil {
 					h.Logger.Warn("cleanup stale connection", zap.Error(delErr), zap.String("id", id))
 				}
 				continue
@@ -134,8 +158,8 @@ func (h *Handler) ReqVolumeChangeHandler(ctx context.Context, req events.APIGate
 	}, nil
 }
 
-func newApiClient(config aws.Config, domainName, stage string) *apigatewaymanagementapi.Client {
-	endpoint := fmt.Sprintf("https://%s/%s", domainName, stage)
+func newApiClient(config aws.Config, apiID, stage string) *apigatewaymanagementapi.Client {
+	endpoint := fmt.Sprintf("https://%s.execute-api.%s.amazonaws.com/%s", apiID, config.Region, stage)
 	client := apigatewaymanagementapi.NewFromConfig(
 		config, func(o *apigatewaymanagementapi.Options) {
 			o.EndpointResolver = apigatewaymanagementapi.EndpointResolverFromURL(endpoint)

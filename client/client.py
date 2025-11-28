@@ -12,7 +12,7 @@ import subprocess
 import sys
 import websockets
 
-SERVER_URL = "ws://localhost:8080/ws"
+SERVER_URL = "wss://api.globalvolu.me/ws"
 POLL_INTERVAL = 0.5  # seconds
 
 async def get_volume():

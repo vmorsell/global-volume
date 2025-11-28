@@ -1,6 +1,11 @@
 package model
 
 type State struct {
-	Users  int `json:"users,omitempty"`
-	Volume int `json:"volume,omitempty"`
+	ConnectionIDs []string `json:"connectionIds" dynamodbav:"connectionIds"`
+	Volume        int      `json:"volume" dynamodbav:"volume"`
+}
+
+type StateMessage struct {
+	Users  int `json:"users"`
+	Volume int `json:"volume"`
 }

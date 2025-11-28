@@ -1,6 +1,6 @@
 import "./style.css";
 
-const WS_URL = "wss://h1uwqodz7a.execute-api.eu-west-1.amazonaws.com/dev/";
+const WS_URL = "wss://api.globalvolu.me/ws";
 const BAR_WIDTH = 20;
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `

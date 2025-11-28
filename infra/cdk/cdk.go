@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	awsapigatewayv2 "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2"
 	apigwint "github.com/aws/aws-cdk-go/awscdk/v2/awsapigatewayv2integrations"
+	awscertificatemanager "github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	awsdynamodb "github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	awsiam "github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	awslambda "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
@@ -69,15 +70,29 @@ func NewGlobalVolumeStack(scope constructs.Construct, id string, props *awscdk.S
 		),
 	})
 
-	stage := awsapigatewayv2.NewWebSocketStage(stack, jsii.String("DevStage"), &awsapigatewayv2.WebSocketStageProps{
+	cert := awscertificatemanager.NewCertificate(stack, jsii.String("WsApiCertificate"), &awscertificatemanager.CertificateProps{
+		DomainName: jsii.String("api.globalvolu.me"),
+		Validation: awscertificatemanager.CertificateValidation_FromDns(nil),
+	})
+
+	customDomain := awsapigatewayv2.NewDomainName(stack, jsii.String("CustomDomain"), &awsapigatewayv2.DomainNameProps{
+		DomainName:  jsii.String("api.globalvolu.me"),
+		Certificate: cert,
+	})
+
+	awsapigatewayv2.NewWebSocketStage(stack, jsii.String("ProdStage"), &awsapigatewayv2.WebSocketStageProps{
 		WebSocketApi: api,
-		StageName:    jsii.String("dev"),
+		StageName:    jsii.String("$default"),
 		AutoDeploy:   jsii.Bool(true),
+		DomainMapping: &awsapigatewayv2.DomainMappingOptions{
+			DomainName: customDomain,
+			MappingKey: jsii.String("ws"),
+		},
 	})
 
 	postArn := fmt.Sprintf(
-		"arn:aws:execute-api:%s:%s:%s/%s/POST/@connections/*",
-		*stack.Region(), *stack.Account(), *api.ApiId(), *stage.StageName(),
+		"arn:aws:execute-api:%s:%s:%s/$default/POST/@connections/*",
+		*stack.Region(), *stack.Account(), *api.ApiId(),
 	)
 	fn.AddToRolePolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Actions:   &[]*string{jsii.String("execute-api:ManageConnections")},
