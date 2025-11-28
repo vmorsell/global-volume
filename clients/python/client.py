@@ -1,9 +1,14 @@
+# /// script
+# dependencies = ["websockets>=15.0"]
+# ///
 """
 A simple, reviewable Python client for global volume sync.
 - Connects to a WebSocket relay server
 - Listens for local volume changes (macOS/Linux)
 - Sends/receives volume updates
 - Sets system volume on update
+
+Run with: uv run client.py
 """
 import asyncio
 import json

@@ -16,7 +16,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     </main>
   </div>
   <footer>
-    join the chaos · <a href="https://github.com/vmorsell/global-volume/tree/main/client" target="_blank">client.py</a>
+    join the chaos · <a href="https://github.com/vmorsell/global-volume/tree/main/clients/python" target="_blank">client.py</a>
   </footer>
 `;
 
