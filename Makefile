@@ -5,7 +5,7 @@ CDK_ARGS := --profile globalvolume
 
 .PHONY: all build deploy clean run-local
 
-all: build deploy
+all: build
 
 build:
 	@mkdir -p $(BUILD_DIR)
