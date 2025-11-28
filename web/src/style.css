@@ -62,7 +62,7 @@ main {
 }
 
 h1 {
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 400;
   margin: 0 0 3rem 0;
   color: var(--gray-dim);
@@ -70,7 +70,7 @@ h1 {
 }
 
 #volume-value {
-  font-size: 5rem;
+  font-size: 6rem;
   font-weight: 500;
   margin: 0;
   color: var(--white);
@@ -79,8 +79,8 @@ h1 {
 }
 
 #volume-bar {
-  margin: 2rem 0;
-  font-size: 1rem;
+  margin: 2.5rem 0;
+  font-size: 1.2rem;
   letter-spacing: 0.05em;
   color: var(--gray-dim);
 }
@@ -93,42 +93,9 @@ h1 {
   color: var(--accent);
 }
 
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 1px;
-  margin: 1rem 0;
-  background: var(--gray-dim);
-  border: none;
-  cursor: pointer;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 10px;
-  height: 10px;
-  background: var(--gray);
-  border: none;
-  cursor: pointer;
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 10px;
-  height: 10px;
-  background: var(--gray);
-  border: none;
-  cursor: pointer;
-}
-
-input[type="range"]:disabled {
-  cursor: default;
-}
-
 #status {
-  margin-top: 2rem;
-  font-size: 0.7rem;
+  margin-top: 2.5rem;
+  font-size: 0.85rem;
   color: var(--gray-dim);
   letter-spacing: 0.08em;
 }
@@ -136,6 +103,6 @@ input[type="range"]:disabled {
 footer {
   padding: 1.5rem;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   letter-spacing: 0.05em;
 }
