@@ -61,12 +61,23 @@ main {
   text-align: center;
 }
 
+header {
+  margin-bottom: 3rem;
+}
+
 h1 {
-  font-size: 1rem;
-  font-weight: 400;
-  margin: 0 0 3rem 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--white);
+  letter-spacing: 0.1em;
+}
+
+.tagline {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.85rem;
   color: var(--gray-dim);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.05em;
 }
 
 #volume-value {

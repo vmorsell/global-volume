@@ -6,7 +6,10 @@ const BAR_WIDTH = 20;
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div id="main-wrapper">
     <main>
-      <h1>globalvolu.me</h1>
+      <header>
+        <h1>globalvolu.me</h1>
+        <p class="tagline">one knob. everyone turns it.</p>
+      </header>
       <div id="volume-value">0%</div>
       <div id="volume-bar">[--------------------]</div>
       <div id="status">connecting...</div>
