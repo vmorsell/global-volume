@@ -3,7 +3,7 @@ BUILD_DIR := build
 CDK_DIR := infra/cdk
 CDK_ARGS := --profile globalvolume
 
-.PHONY: all build deploy clean run-local
+.PHONY: all build deploy clean run-local test test-verbose test-coverage
 
 all: build
 
@@ -11,7 +11,6 @@ build:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=arm64 go build -o $(BUILD_DIR)/bootstrap cmd/wslambda/main.go
 	cd web && npm run build
-
 
 deploy:
 	cd $(CDK_DIR) && cdk deploy $(CDK_ARGS)
@@ -22,3 +21,12 @@ clean:
 
 run-local:
 	go run cmd/wsserver/main.go
+
+test:
+	go test ./...
+
+test-verbose:
+	go test -v ./...
+
+test-coverage:
+	go test -cover ./...

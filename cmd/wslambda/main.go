@@ -13,6 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	envConnectionsTable = "CONNECTIONS_TABLE"
+)
+
 func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -20,45 +24,23 @@ func main() {
 	}
 	defer logger.Sync()
 
-	tableName := os.Getenv("CONNECTIONS_TABLE")
+	tableName := os.Getenv(envConnectionsTable)
 	if tableName == "" {
-		logger.Fatal("CONNECTIONS_TABLE is not set")
+		logger.Fatal("CONNECTIONS_TABLE environment variable is not set")
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		logger.Fatal("failed to load AWS config", zap.Error(err))
 	}
+
 	dynamoClient := dynamodb.NewFromConfig(cfg)
+	store := storage.NewStorage(logger, dynamoClient, tableName)
 
-	store := &storage.Storage{
-		Logger:    logger,
-		Client:    dynamoClient,
-		TableName: tableName,
-	}
+	h := handlers.NewHandler(logger, cfg, store)
 
-	h := &handlers.Handler{
-		Logger:    logger,
-		AWSConfig: cfg,
-		Storage:   store,
-	}
-
-	router := func(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (interface{}, error) {
-		switch req.RequestContext.RouteKey {
-		case "$connect":
-			return h.ConnectHandler(ctx, req)
-		case "$disconnect":
-			return h.DisconnectHandler(ctx, req)
-		case "getState":
-			return h.GetStateHandler(ctx, req)
-		case "reqVolumeChange":
-			return h.ReqVolumeChangeHandler(ctx, req)
-		default:
-			return events.APIGatewayProxyResponse{
-				StatusCode: 400,
-				Body:       "invalid route",
-			}, nil
-		}
+	router := func(ctx context.Context, req events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+		return h.HandleRequest(ctx, req)
 	}
 
 	lambda.Start(router)

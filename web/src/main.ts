@@ -2,6 +2,12 @@ import "./style.css";
 
 const WS_URL = "wss://api.globalvolu.me/ws";
 const BAR_WIDTH = 20;
+const VOLUME_MIN = 0;
+const VOLUME_MAX = 100;
+
+let ws: WebSocket | null = null;
+let connectionAttempts = 0;
+let lastConnectionTime = 0;
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div id="main-wrapper">
@@ -20,12 +26,17 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </footer>
 `;
 
-const valueDisplay = document.getElementById("volume-value") as HTMLElement;
-const volumeBar = document.getElementById("volume-bar") as HTMLElement;
-const status = document.getElementById("status") as HTMLElement;
+const valueDisplay = document.getElementById("volume-value");
+const volumeBar = document.getElementById("volume-bar");
+const status = document.getElementById("status");
+
+if (!valueDisplay || !volumeBar || !status) {
+  throw new Error("Failed to initialize DOM elements");
+}
 
 function renderBar(vol: number): string {
-  const filled = Math.round((vol / 100) * BAR_WIDTH);
+  const clampedVol = Math.max(VOLUME_MIN, Math.min(VOLUME_MAX, vol));
+  const filled = Math.round((clampedVol / 100) * BAR_WIDTH);
   const empty = BAR_WIDTH - filled;
 
   const filledStr = "#".repeat(Math.max(0, filled - 1));
@@ -35,41 +46,112 @@ function renderBar(vol: number): string {
   return `[<span class="filled">${filledStr}</span><span class="peak">${peakStr}</span>${emptyStr}]`;
 }
 
-function setVolume(vol: number) {
-  valueDisplay.textContent = `${vol}%`;
-  volumeBar.innerHTML = renderBar(vol);
+function setVolume(vol: number): void {
+  if (!valueDisplay || !volumeBar) {
+    return;
+  }
+  const clampedVol = Math.max(VOLUME_MIN, Math.min(VOLUME_MAX, vol));
+  valueDisplay.textContent = `${clampedVol}%`;
+  volumeBar.innerHTML = renderBar(clampedVol);
 }
 
-function setStatus(msg: string) {
+function setStatus(msg: string): void {
+  if (!status) {
+    console.error("Status element not found");
+    return;
+  }
   status.textContent = msg;
 }
 
-setStatus("connecting...");
+function handleVolumeMessage(data: { volume?: number }): void {
+  const volume = data.volume;
+  if (
+    typeof volume === "number" &&
+    VOLUME_MIN <= volume &&
+    volume <= VOLUME_MAX
+  ) {
+    setVolume(volume);
+  }
+}
 
-const ws = new WebSocket(WS_URL);
+function handleClientsMessage(data: { clients?: number }): void {
+  const clients = data.clients;
+  if (typeof clients === "number" && clients >= 0) {
+    setStatus(`${clients} client${clients !== 1 ? "s" : ""} connected`);
+  }
+}
 
-ws.onopen = () => {
-  setStatus("connected");
-
-  ws.send(JSON.stringify({ action: "getState" }));
-};
-
-ws.onmessage = (event) => {
+function handleMessage(event: MessageEvent): void {
   try {
     const data = JSON.parse(event.data);
-    if (data.volume !== undefined) {
-      setVolume(data.volume);
+
+    if (typeof data !== "object" || data === null) {
+      return;
     }
-    setStatus(`${data.users || 0} users connected`);
+
+    const messageType = data.type;
+
+    if (messageType === "volume") {
+      handleVolumeMessage(data);
+    } else if (messageType === "clients") {
+      handleClientsMessage(data);
+    }
   } catch (e) {
+    console.error("Failed to parse message:", e);
     setStatus("invalid message");
   }
-};
+}
 
-ws.onclose = () => {
-  setStatus("disconnected");
-};
+function connect(): void {
+  const now = Date.now();
+  connectionAttempts++;
 
-ws.onerror = () => {
-  setStatus("connection error");
-};
+  setStatus("connecting...");
+  lastConnectionTime = now;
+
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    connectionAttempts = 0; // Reset on successful connection
+    setStatus("connected");
+    if (ws) {
+      ws.send(JSON.stringify({ action: "getVolume" }));
+      ws.send(JSON.stringify({ action: "getConnectedClientsCount" }));
+    }
+  };
+
+  ws.onmessage = handleMessage;
+
+  ws.onclose = (event) => {
+    const connectionDuration = Date.now() - lastConnectionTime;
+    ws = null;
+
+    if (event.code === 1006) {
+      if (connectionDuration < 500 && connectionAttempts > 1) {
+        setStatus(
+          "connection rejected - server may be at capacity, retrying in 10s..."
+        );
+        setTimeout(connect, 10000);
+        return;
+      }
+      setStatus("connection failed - retrying...");
+      const delay = Math.min(3000 * Math.pow(2, connectionAttempts - 1), 30000);
+      setTimeout(connect, delay);
+    } else if (event.code === 1000) {
+      setStatus("disconnected");
+    } else {
+      setStatus(`disconnected (code: ${event.code})`);
+      setTimeout(connect, 3000);
+    }
+  };
+
+  ws.onerror = () => {
+    if (connectionAttempts > 1 && Date.now() - lastConnectionTime < 500) {
+      setStatus("connection rejected - server may be at capacity");
+    } else {
+      setStatus("connection error");
+    }
+  };
+}
+
+connect();
