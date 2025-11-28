@@ -1,40 +1,52 @@
 import "./style.css";
 
 const WS_URL = "wss://h1uwqodz7a.execute-api.eu-west-1.amazonaws.com/dev/";
+const BAR_WIDTH = 20;
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div id="main-wrapper">
     <main>
       <h1>globalvolu.me</h1>
-      <input id="volume-slider" type="range" min="0" max="100" value="0" disabled />
-      <div id="volume-value">0 / 100</div>
-      <div id="status">Connecting...</div>
+      <div id="volume-value">0%</div>
+      <div id="volume-bar">[--------------------]</div>
+      <div id="status">connecting...</div>
     </main>
   </div>
   <footer>
-    <a href="https://github.com/vmorsell/global-volume/tree/main/client" target="_blank">Python Client</a>
+    join the chaos · <a href="https://github.com/vmorsell/global-volume/tree/main/client" target="_blank">client.py</a>
   </footer>
 `;
 
-const slider = document.getElementById("volume-slider") as HTMLInputElement;
 const valueDisplay = document.getElementById("volume-value") as HTMLElement;
+const volumeBar = document.getElementById("volume-bar") as HTMLElement;
 const status = document.getElementById("status") as HTMLElement;
 
+function renderBar(vol: number): string {
+  const filled = Math.round((vol / 100) * BAR_WIDTH);
+  const empty = BAR_WIDTH - filled;
+
+  const filledStr = "#".repeat(Math.max(0, filled - 1));
+  const peakStr = filled > 0 ? "#" : "";
+  const emptyStr = "-".repeat(empty);
+
+  return `[<span class="filled">${filledStr}</span><span class="peak">${peakStr}</span>${emptyStr}]`;
+}
+
 function setVolume(vol: number) {
-  slider.value = vol.toString();
-  valueDisplay.textContent = `${vol} / 100`;
+  valueDisplay.textContent = `${vol}%`;
+  volumeBar.innerHTML = renderBar(vol);
 }
 
 function setStatus(msg: string) {
   status.textContent = msg;
 }
 
-setStatus("Connecting...");
+setStatus("connecting...");
 
 const ws = new WebSocket(WS_URL);
 
 ws.onopen = () => {
-  setStatus("Connected");
+  setStatus("connected");
 
   ws.send(JSON.stringify({ action: "getState" }));
 };
@@ -47,14 +59,14 @@ ws.onmessage = (event) => {
     }
     setStatus(`${data.users || 0} users connected`);
   } catch (e) {
-    setStatus("Received invalid message");
+    setStatus("invalid message");
   }
 };
 
 ws.onclose = () => {
-  setStatus("Disconnected from server");
+  setStatus("disconnected");
 };
 
 ws.onerror = () => {
-  setStatus("WebSocket error");
+  setStatus("connection error");
 };
