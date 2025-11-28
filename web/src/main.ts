@@ -8,7 +8,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     <main>
       <header>
         <h1>globalvolu.me</h1>
-        <p class="tagline">one knob. everyone turns it.</p>
+        <p class="tagline">one volume knob to rule them all</p>
       </header>
       <div id="volume-value">0%</div>
       <div id="volume-bar">[--------------------]</div>
@@ -16,7 +16,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     </main>
   </div>
   <footer>
-    join the chaos · <a href="https://github.com/vmorsell/global-volume/tree/main/clients/python" target="_blank">client.py</a>
+    join the community · <a href="https://github.com/vmorsell/global-volume/tree/main/clients/python" target="_blank">client.py</a>
   </footer>
 `;
 

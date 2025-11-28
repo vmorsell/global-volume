@@ -1,14 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
-
 :root {
-  --white: #e8e8e8d6;
-  --gray: #888888;
-  --gray-dim: #484848;
-  --accent: #80e080;
-  --bg: #0a1214;
-  --bg-light: #141e22;
+  --black: rgba(0, 0, 0, 0.9);
+  --gray: rgba(0, 0, 0, 0.75);
+  --gray-dim: rgba(0, 0, 0, 0.6);
+  --accent: #f45d4c;
+  --bg: #fee5ad;
 
-  font-family: "JetBrains Mono", monospace;
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
   line-height: 1.5;
   font-weight: 400;
 
@@ -30,7 +28,7 @@ a {
 }
 
 a:hover {
-  color: var(--white);
+  color: var(--accent);
 }
 
 body {
@@ -66,10 +64,10 @@ header {
 }
 
 h1 {
-  font-size: 1.1rem;
-  font-weight: 500;
+  font-size: 1.2rem;
+  font-weight: 600;
   margin: 0;
-  color: var(--white);
+  color: var(--black);
   letter-spacing: 0.1em;
 }
 
@@ -84,7 +82,7 @@ h1 {
   font-size: 6rem;
   font-weight: 500;
   margin: 0;
-  color: var(--white);
+  color: var(--black);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -97,7 +95,7 @@ h1 {
 }
 
 #volume-bar .filled {
-  color: var(--white);
+  color: var(--black);
 }
 
 #volume-bar .peak {
