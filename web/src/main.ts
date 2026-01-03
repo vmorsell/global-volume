@@ -14,15 +14,17 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     <main>
       <header>
         <h1>globalvolu.me</h1>
-        <p class="tagline">one volume knob to rule them all</p>
       </header>
-      <div id="volume-value">0%</div>
+      <div id="volume-container">
+        <div id="volume-label">the volume is</div>
+        <div id="volume-value">0%</div>
+      </div>
       <div id="volume-bar">[--------------------]</div>
       <div id="status">connecting...</div>
     </main>
   </div>
   <footer>
-    join the community · <a href="https://github.com/vmorsell/global-volume/tree/main/clients/python" target="_blank">client.py</a>
+    <a href="https://github.com/vmorsell/global-volume/tree/main/clients/python" target="_blank">client.py</a>
   </footer>
 `;
 
@@ -77,7 +79,11 @@ function handleVolumeMessage(data: { volume?: number }): void {
 function handleClientsMessage(data: { clients?: number }): void {
   const clients = data.clients;
   if (typeof clients === "number" && clients >= 0) {
-    setStatus(`${clients} client${clients !== 1 ? "s" : ""} connected`);
+    if (clients > 0) {
+      setStatus(`${clients} people syncing or spectating`);
+    } else {
+      setStatus("no one is connected right now");
+    }
   }
 }
 

@@ -78,6 +78,19 @@ h1 {
   letter-spacing: 0.05em;
 }
 
+#volume-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#volume-label {
+  font-size: 1rem;
+  color: var(--gray-dim);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
 #volume-value {
   font-size: 6rem;
   font-weight: 500;
