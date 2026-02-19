@@ -1,9 +1,9 @@
 :root {
-  --black: rgba(0, 0, 0, 0.9);
-  --gray: rgba(0, 0, 0, 0.75);
-  --gray-dim: rgba(0, 0, 0, 0.6);
-  --accent: #f45d4c;
-  --bg: #fee5ad;
+  --black: rgba(248, 250, 252, 0.95);
+  --gray: rgba(226, 232, 240, 0.80);
+  --gray-dim: rgba(148, 163, 184, 0.75);
+  --accent: #818cf8;
+  --bg: #0f172a;
 
   font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
     "Liberation Mono", monospace;
